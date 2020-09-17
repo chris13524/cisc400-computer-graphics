@@ -1,0 +1,4 @@
+Immediate mode rendering is where the application issues
+each drawing call itself. Retained mode rendering is where
+the application describes the scene, but doesn't issue the
+individual rendering calls.

@@ -1,0 +1,7 @@
+First we define an init function. This function gets our
+canvas object. If there was no canvas, it logs the error
+and aborts. Otherwise it continues to get the WebGL
+context. It displays a JavaScript alert dialog saying
+whether or not the context was available.
+
+Next, we set the init function to run after the page loads.
