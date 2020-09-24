@@ -135,8 +135,8 @@
 
         for (let i = 0; i < num_vertices; i++) {
           const r = 0.5;
-          vertices.push(r * Math.sin(2 * Math.PI * (i / num_vertices)));
           vertices.push(r * Math.cos(2 * Math.PI * (i / num_vertices)));
+          vertices.push(r * Math.sin(2 * Math.PI * (i / num_vertices)));
           vertices.push(0);
           indices.push(i);
         }
