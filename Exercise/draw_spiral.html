@@ -129,13 +129,14 @@
           let vertices = [];
           let indices = [];
 
-          for (let i = 0, r = radius; r > 0; i++, r -= radius / num_layers / num_vertices) {
-            vertices.push(
-              r * Math.cos(2 * Math.PI * (i / num_vertices))
-            );
-            vertices.push(
-              r * Math.sin(2 * Math.PI * (i / num_vertices))
-            );
+          for (
+            let θ = 0, r = radius;
+            r > 0;
+            θ += (2 * Math.PI) / num_vertices,
+              r -= radius / num_layers / num_vertices
+          ) {
+            vertices.push(r * Math.cos(θ));
+            vertices.push(r * Math.sin(θ));
             vertices.push(0);
             indices.push(indices.length);
           }
