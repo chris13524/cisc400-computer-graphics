@@ -123,26 +123,24 @@
         // Indices defined in counter-clockwise order
         indices = [0, 1, 2, 0, 2, 3];
 
-        [vertices, indices] = draw_circle(50, 10, 0.8);
+        function draw_spiral(num_vertices, num_layers, radius) {
+          const vertices = [];
 
-        function draw_circle(num_vertices, num_layers, radius) {
-          let vertices = [];
-          let indices = [];
+          const Δθ = (2 * Math.PI) / num_vertices;
+          const Δr = radius / num_layers / num_vertices;
 
-          for (
-            let θ = 0, r = radius;
-            r > 0;
-            θ += (2 * Math.PI) / num_vertices,
-              r -= radius / num_layers / num_vertices
-          ) {
-            vertices.push(r * Math.cos(θ));
-            vertices.push(r * Math.sin(θ));
-            vertices.push(0);
-            indices.push(indices.length);
+          for (let θ = 0, r = radius; r > 0; θ += Δθ, r -= Δr) {
+            vertices.push(r * Math.cos(θ)); // x
+            vertices.push(r * Math.sin(θ)); // y
+            vertices.push(0); // z
           }
+
+          const indices = [...Array(vertices.length / 3).keys()];
 
           return [vertices, indices];
         }
+
+        [vertices, indices] = draw_spiral(50, 10, 0.8);
 
         // Setting up the VBO
         squareVertexBuffer = gl.createBuffer();
