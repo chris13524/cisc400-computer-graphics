@@ -177,7 +177,7 @@
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, squareIndexBuffer);
 
       // Draw to the scene using triangle primitives
-      gl.drawElements(gl.LINE_LOOP, indices.length, gl.UNSIGNED_SHORT, 0);
+      gl.drawElements(gl.TRIANGLE_FAN, indices.length, gl.UNSIGNED_SHORT, 0);
 
       // Clean
       gl.bindBuffer(gl.ARRAY_BUFFER, null);
