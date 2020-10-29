@@ -1,0 +1,236 @@
+<html>
+<head>
+  <title>Real-Time 3D Graphics with WebGL2</title>
+  <link rel="shortcut icon" type="image/png" href="/common/images/favicon.png" />
+
+  <!-- libraries -->
+  <link rel="stylesheet" href="/common/lib/normalize.css">
+
+  <!-- modules -->
+  <script type="text/javascript" src="/common/js/utils.js"></script>
+  <script src="https://rawgit.com/huningxin/webglbook_examples/master/lib/cuon-matrix.js"></script>
+
+  <!-- vertex Shader -->
+  <script id="vertex-shader" type="x-shader/x-vertex">
+    #version 300 es
+    precision mediump float;
+
+    uniform mat4 u_xformMatrix;
+
+    // Supplied vertex position attribute
+    in vec3 aVertexPosition;
+
+    void main(void) {
+      // Set the position in clipspace coordinates
+      gl_Position = u_xformMatrix * vec4(aVertexPosition, 1.0);
+    }
+  </script>
+
+  <!-- fragment Shader -->
+  <script id="fragment-shader" type="x-shader/x-fragment">
+    #version 300 es
+    precision mediump float;
+
+    // Color that is the result of this shader
+    out vec4 fragColor;
+
+    void main(void) {
+      // Set the result as red
+      fragColor = vec4(0.0, 0.0, 1.0, 1.0);
+    }
+  </script>
+
+  <script type="text/javascript">
+    'use strict';
+
+    // Global variables that are set and used
+    // across the application
+    let gl,
+      program,
+      squareVertexBuffer,
+      squareIndexBuffer,
+      indices;
+
+    // Given an id, extract the content's of a shader script
+    // from the DOM and return the compiled shader
+    function getShader(id) {
+      const script = document.getElementById(id);
+      const shaderString = script.text.trim();
+
+      // Assign shader depending on the type of shader
+      let shader;
+      if (script.type === 'x-shader/x-vertex') {
+        shader = gl.createShader(gl.VERTEX_SHADER);
+      }
+      else if (script.type === 'x-shader/x-fragment') {
+        shader = gl.createShader(gl.FRAGMENT_SHADER);
+      }
+      else {
+        return null;
+      }
+
+      // Compile the shader using the supplied shader code
+      gl.shaderSource(shader, shaderString);
+      gl.compileShader(shader);
+
+      // Ensure the shader is valid
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        console.error(gl.getShaderInfoLog(shader));
+        return null;
+      }
+
+      return shader;
+    }
+
+    // Create a program with the appropriate vertex and fragment shaders
+    function initProgram() {
+      const vertexShader = getShader('vertex-shader');
+      const fragmentShader = getShader('fragment-shader');
+
+      // Create a program
+      program = gl.createProgram();
+      // Attach the shaders to this program
+      gl.attachShader(program, vertexShader);
+      gl.attachShader(program, fragmentShader);
+      gl.linkProgram(program);
+
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+        console.error('Could not initialize shaders');
+      }
+
+      // Use this program instance
+      gl.useProgram(program);
+      // We attach the location of these shader values to the program instance
+      // for easy access later in the code
+      program.aVertexPosition = gl.getAttribLocation(program, 'aVertexPosition');
+    }
+
+    // Set up the buffers for the square
+    function initBuffers() {
+      /*
+        V0                    V3
+        (-0.5, 0.5, 0)        (0.5, 0.5, 0)
+        X---------------------X
+        |                     |
+        |                     |
+        |       (0, 0)        |
+        |                     |
+        |                     |
+        X---------------------X
+        V1                    V2
+        (-0.5, -0.5, 0)       (0.5, -0.5, 0)
+      */
+      let vertices = [
+        -0.5, 0.5, 0,
+        -0.5, -0.5, 0,
+        0.5, -0.5, 0,
+        0.5, 0.5, 0
+      ];
+
+      // Indices defined in counter-clockwise order
+      indices = [0, 1, 2, 0, 2, 3];
+
+      [vertices, indices] = draw_circle(6);
+
+      function draw_circle(num_vertices) {
+        let vertices = [];
+        let indices = [];
+
+        for (let i = 0; i < num_vertices; i++) {
+          const r = 0.5;
+          vertices.push(r * Math.cos(2 * Math.PI * (i / num_vertices)));
+          vertices.push(r * Math.sin(2 * Math.PI * (i / num_vertices)));
+          vertices.push(0);
+          indices.push(i);
+        }
+
+        return [vertices, indices];
+      }
+
+      // Setting up the VBO
+      squareVertexBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+      // Setting up the IBO
+      squareIndexBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, squareIndexBuffer);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+      // Clean
+      gl.bindBuffer(gl.ARRAY_BUFFER, null);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+    }
+
+    // We call draw to render to our canvas
+    function draw() {
+      // Clear the scene
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+      // Use the buffers we've constructed
+      gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexBuffer);
+      gl.vertexAttribPointer(program.aVertexPosition, 3, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(program.aVertexPosition);
+
+      // Bind IBO
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, squareIndexBuffer);
+
+      // Draw to the scene using triangle primitives
+      gl.drawElements(gl.LINE_LOOP, indices.length, gl.UNSIGNED_SHORT, 0);
+
+      // Clean
+      gl.bindBuffer(gl.ARRAY_BUFFER, null);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
+    }
+
+    // Entry point to our application
+    function init() {
+      // Retrieve the canvas
+      const canvas = utils.getCanvas('webgl-canvas');
+
+      // Set the canvas to the size of the screen
+      canvas.width = 500;//window.innerWidth;
+      canvas.height = 500;//window.innerHeight;
+
+      // Retrieve a WebGL context
+      gl = utils.getGLContext(canvas);
+
+      // Set the clear color to be black
+      gl.clearColor(0, 0, 0, 1);
+
+      // Call the functions in an appropriate order
+      initProgram();
+      initBuffers();
+
+      // Create Matrix4 object for the rotation matrix
+      var xformMatrix = new Matrix4();
+
+      // Set the scale matrix
+      xformMatrix.setRotate(45, 0, 0, 1);
+      xformMatrix.scale(0.5, 0.5, 1);
+
+      // Pass the rotation matrix to the vertex shader
+      var u_xformMatrix = gl.getUniformLocation(program, 'u_xformMatrix');
+      if (!u_xformMatrix) {
+        console.log('Failed to get the storage location of u_xformMatrix');
+        return;
+      }
+      gl.uniformMatrix4fv(u_xformMatrix, false, xformMatrix.elements);
+
+      draw();
+    }
+
+    // Call init once the webpage has loaded
+    window.onload = init;
+  </script>
+</head>
+
+<body>
+
+  <canvas id="webgl-canvas">
+    Your browser does not support the HTML5 canvas element.
+  </canvas>
+
+</body>
+</html>
