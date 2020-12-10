@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Pong</title>
+
+  <link rel="stylesheet" href="/common/lib/normalize.css" />
+
+  <script type="text/javascript" src="/common/js/utils.js"></script>
+  <script src="https://rawgit.com/huningxin/webglbook_examples/master/lib/cuon-matrix.js"></script>
+
+  <script id="vertex-shader" type="x-shader/x-vertex">
+    attribute vec2 a_Position;
+
+    void main(void) {
+      gl_Position = vec4(a_Position, 0.0, 1.0);
+    }
+  </script>
+
+  <script id="fragment-shader" type="x-shader/x-fragment">
+    void main(void) {
+      gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+    }
+  </script>
+
+  <script type="text/javascript">
+    "use strict";
+
+    // GL globals
+    let gl, program;
+
+    const ballRadius = 0.02;
+    const paddleThickness = 0.02;
+    const paddleLength = 0.2;
+
+    const boundMin = -1 + ballRadius + paddleThickness;
+    const boundMax = 1 - ballRadius - paddleThickness;
+
+    const initialVelocity = 0.01;
+    const velocitySpeedUp = 0.0000002;
+
+    const paddleStep = 0.015;
+
+    // play variables
+    let playStart,
+      x, y, angle, velocity,
+      p1Paddle, p1PaddleD, p2Paddle, p2PaddleD;
+
+    // game variables
+    let p1Score, p2Score;
+
+    function reset() {
+      playStart = performance.now();
+      x = 0;
+      y = 0;
+      angle = (Math.random() / 2 + 0.25) * Math.PI + (Math.PI / 2 * (p1Score >= p2Score ? 1 : -1));
+      velocity = initialVelocity;
+
+      p1Paddle = 0;
+      p1PaddleD = 0;
+      p2Paddle = 0;
+      p2PaddleD = 0;
+    }
+
+    function resetGame() {
+      // Using a min-size square to avoid bending the star
+      p1Score = 0;
+      p2Score = 0;
+      drawScore();
+      reset();
+    }
+
+    function drawScore() {
+      document.getElementById("p1-score").innerText = p1Score;
+      document.getElementById("p2-score").innerText = p2Score;
+    }
+
+    function initBuffers() {
+      const vertices = [];
+
+      function drawRectangle(x, y, rwidth, rheight) {
+        vertices.push(
+          -1 * rwidth + x,
+          -1 * rheight + y,
+          -1 * rwidth + x,
+          1 * rheight + y,
+          1 * rwidth + x,
+          -1 * rheight + y,
+          1 * rwidth + x,
+          1 * rheight + y,
+          1 * rwidth + x,
+          -1 * rheight + y,
+          -1 * rwidth + x,
+          1 * rheight + y
+        );
+      }
+
+      // draw ball
+      drawRectangle(x, y, ballRadius, ballRadius);
+
+      // draw paddles
+      drawRectangle(
+        -1 + paddleThickness / 2,
+        p1Paddle,
+        paddleThickness / 2,
+        paddleLength / 2
+      );
+      drawRectangle(
+        1 - paddleThickness / 2,
+        p2Paddle,
+        paddleThickness / 2,
+        paddleLength / 2
+      );
+
+      // VBO
+      const verticesArray = new Float32Array(vertices);
+      const squareVertexBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, verticesArray, gl.STATIC_DRAW);
+
+      // a_Position
+      const a_Position = gl.getAttribLocation(program, "a_Position");
+      if (a_Position < 0) {
+        console.log("Failed to get the storage location of a_Position");
+        return -1;
+      }
+      gl.vertexAttribPointer(a_Position, 2, gl.FLOAT, false, verticesArray.BYTES_PER_ELEMENT * 2, 0);
+      gl.enableVertexAttribArray(a_Position);
+
+      // Clean
+      gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    }
+
+    function gameLoop() {
+      // move ball
+      const adjustedVelocity = velocity + (performance.now() - playStart) * velocitySpeedUp;
+      x += Math.cos(angle) * adjustedVelocity;
+      y += Math.sin(angle) * adjustedVelocity;
+
+      // move paddles
+      p1Paddle += paddleStep * p1PaddleD;
+      p1Paddle = Math.min(p1Paddle, 1 - paddleLength / 2);
+      p1Paddle = Math.max(p1Paddle, -1 + paddleLength / 2);
+      p2Paddle += paddleStep * p2PaddleD;
+      p2Paddle = Math.min(p2Paddle, 1 - paddleLength / 2);
+      p2Paddle = Math.max(p2Paddle, -1 + paddleLength / 2);
+
+      initBuffers();
+
+      // clear screen and re-draw
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.drawArrays(gl.TRIANGLES, 0, 18);
+
+      // check for ball bounce in x
+      if (x <= boundMin || boundMax <= x) {
+        // bounce the ball
+        angle = Math.PI - angle;
+
+        // check if it hit a paddle
+        if (x < 0) {
+          if (Math.abs(p1Paddle - y) > paddleLength / 2 + ballRadius) {
+            p2Score++;
+            drawScore();
+            reset();
+
+            if (p2Score > 10) {
+              alert("Player 2 wins!");
+              resetGame();
+            }
+          }
+        } else {
+          if (Math.abs(p2Paddle - y) > paddleLength / 2 + ballRadius) {
+            p1Score++;
+            drawScore();
+            reset();
+
+            if (p1Score > 10) {
+              alert("Player 1 wins!");
+              resetGame();
+            }
+          }
+        }
+      }
+
+      // check for ball bounce in y
+      if (y <= boundMin || boundMax <= y) {
+        // bounce it
+        angle = 2 * Math.PI - angle;
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    window.onload = () => {
+      // get canvas
+      const canvas = utils.getCanvas("canvas");
+
+      // initialize gl and program globals
+      gl = utils.getGLContext(canvas);
+      program = gl.createProgram();
+
+      // get and attach shaders
+      gl.attachShader(program, utils.getShader(gl, "vertex-shader"));
+      gl.attachShader(program, utils.getShader(gl, "fragment-shader"));
+
+      // link and use the program
+      gl.linkProgram(program);
+      if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw "Could not initialize shaders";
+      gl.useProgram(program);
+
+      // size the canvas to the largest square that fits on the screen
+      const size = Math.min(window.innerWidth, window.innerHeight);
+      canvas.height = canvas.width = size;
+      gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+      // set background color to black
+      gl.clearColor(0, 0, 0, 1);
+
+      // bind game controls
+      document.onkeydown = e => {
+        switch (e.key) {
+          case "w":
+            p1PaddleD = 1;
+            break;
+          case "s":
+            p1PaddleD = -1;
+            break;
+          case "ArrowUp":
+            p2PaddleD = 1;
+            break;
+          case "ArrowDown":
+            p2PaddleD = -1;
+            break;
+        }
+      };
+      document.onkeyup = e => {
+        switch (e.key) {
+          case "w":
+          case "s":
+            p1PaddleD = 0;
+            break;
+          case "ArrowUp":
+          case "ArrowDown":
+            p2PaddleD = 0;
+            break;
+        }
+      };
+
+      // initialize state for first time
+      resetGame();
+
+      // start the game
+      gameLoop();
+    }
+  </script>
+
+  <style>
+    div {
+      width: min-content;
+      position: relative;
+    }
+
+    #p1-score,
+    #p2-score {
+      color: white;
+      font-size: 10vh;
+
+      position: absolute;
+      top: 0;
+    }
+
+    #p1-score {
+      right: 52vh;
+    }
+
+    #p2-score {
+      left: 52vh;
+    }
+  </style>
+</head>
+
+<body>
+  <div>
+    <canvas id="canvas">
+      Your browser does not support the HTML5 canvas element.
+    </canvas>
+    <p id="p1-score"></p>
+    <p id="p2-score"></p>
+  </div>
+</body>
+
+</html>
