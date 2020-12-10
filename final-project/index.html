@@ -33,8 +33,10 @@
     const paddleThickness = 0.02;
     const paddleLength = 0.2;
 
-    const boundMin = -1 + ballRadius + paddleThickness;
-    const boundMax = 1 - ballRadius - paddleThickness;
+    const boundMinY = -1 + ballRadius;
+    const boundMaxY = 1 - ballRadius;
+    const buildMinX = boundMinY + paddleThickness;
+    const boundMaxX = boundMaxY - paddleThickness;
 
     const initialVelocity = 0.01;
     const velocitySpeedUp = 0.0000002;
@@ -151,7 +153,7 @@
       gl.drawArrays(gl.TRIANGLES, 0, 18);
 
       // check for ball bounce in x
-      if (x <= boundMin || boundMax <= x) {
+      if (x <= boundMinX || boundMaxX <= x) {
         // bounce the ball
         angle = Math.PI - angle;
 
@@ -182,7 +184,7 @@
       }
 
       // check for ball bounce in y
-      if (y <= boundMin || boundMax <= y) {
+      if (y <= boundMinY || boundMaxY <= y) {
         // bounce it
         angle = 2 * Math.PI - angle;
       }
